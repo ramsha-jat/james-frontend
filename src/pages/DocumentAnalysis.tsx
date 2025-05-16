@@ -1,5 +1,7 @@
 import { useState } from "react";
 import API from "@/lib/axios"; // Your axios setup
+import DocumentChat from "./DocumentChat";
+
 
 const DocumentAnalysis = () => {
   const [file, setFile] = useState<File | null>(null);
