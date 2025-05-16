@@ -7,7 +7,7 @@ import UploadDocumentsPage from "@/pages/UploadDocumentsPage";
 import AssistantPage from "@/pages/assistant";
 import PostGeneratorPage from "@/pages/PostGeneratorPage";
 import DocumentAnalysis from "@/pages/DocumentAnalysis";
-import DocumentChat from "@/pages/DocumentChat";
+
 const AppRoutes = () => (
   <BrowserRouter>
     <Routes>
@@ -19,7 +19,6 @@ const AppRoutes = () => (
       <Route path="/assistant" element={<AssistantPage />} />
       <Route path="/post-generator" element={<PostGeneratorPage />} />
       <Route path="/document-analysis" element={<DocumentAnalysis />} />
-      <Route path="/document-chat" element={<DocumentChat />} />
     </Routes>
   </BrowserRouter>
 );
