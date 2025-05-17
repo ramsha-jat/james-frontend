@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { FaUpload, FaComments, FaPen } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -14,31 +14,57 @@ interface User {
   role: string;
 }
 
+interface UserData {
+  id: string;
+  [key: string]: any; // Allow any other fields from Firestore
+}
+
 const AdminDashboardContent = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [docCount, setDocCount] = useState(0);
   const [queryCount, setQueryCount] = useState(0);
   const [postCount, setPostCount] = useState(0);
+  const [analysisCount, setAnalysisCount] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchUsersAndStats = async () => {
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const usersList: User[] = usersSnapshot.docs.map(doc => ({
+        // Get only active users (where role exists)
+        const usersQuery = query(collection(db, "users"), where("role", "!=", null));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        // Log the raw data for debugging
+        const rawUsers = usersSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
-        })) as User[];
+          ...doc.data()
+        })) as UserData[];
+        
+        console.log("Raw users data:", rawUsers);
+
+        const usersList: User[] = rawUsers
+          .filter(user => user.role && user.email && user.fullName) // Only include complete user records
+          .map(user => ({
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role
+          }));
+
+        console.log("Filtered users list:", usersList);
+        console.log("Total users count:", usersList.length);
+
         setUsers(usersList);
         setTotalUsers(usersList.length);
 
-        const statsResponse = await API.get("/stats"); // fetch backend /stats
+        const statsResponse = await API.get("/stats");
         setDocCount(statsResponse.data.document_count || 0);
-        setQueryCount(statsResponse.data.query_count || 0);
+        setQueryCount(statsResponse.data.assistant_queries || 0);
         setPostCount(statsResponse.data.post_count || 0);
+        setAnalysisCount(statsResponse.data.document_analysis || 0);
       } catch (error) {
-        console.error("Error fetching users or stats", error);
+        console.error("Error fetching users or stats:", error);
       }
     };
 
@@ -63,7 +89,7 @@ const AdminDashboardContent = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-5 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold mb-2">Registered Users</h3>
           <p className="text-4xl font-bold">{totalUsers}</p>
@@ -71,21 +97,27 @@ const AdminDashboardContent = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-2">Documents Uploaded</h3>
+          <h3 className="text-lg font-semibold mb-2">Documents in Database</h3>
           <p className="text-4xl font-bold">{docCount}</p>
-          <p className="text-gray-500 text-sm mt-2">Files in /docs</p>
+          <p className="text-sm text-gray-500 mt-2">Total documents in FAISS</p>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-2">AI Queries</h3>
+          <h3 className="text-lg font-semibold mb-2">AI Assistant Queries</h3>
           <p className="text-4xl font-bold">{queryCount}</p>
-          <p className="text-gray-500 text-sm mt-2">Questions Asked</p>
+          <p className="text-sm text-gray-500 mt-2">Times AI Assistant was used</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-2">Document Analysis</h3>
+          <p className="text-4xl font-bold">{analysisCount}</p>
+          <p className="text-sm text-gray-500 mt-2">Documents analyzed</p>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold mb-2">Posts Generated</h3>
           <p className="text-4xl font-bold">{postCount}</p>
-          <p className="text-gray-500 text-sm mt-2">Social Media Posts</p>
+          <p className="text-sm text-gray-500 mt-2">AI-generated posts</p>
         </div>
       </div>
 
@@ -97,7 +129,7 @@ const AdminDashboardContent = () => {
             <p className="text-gray-500 text-sm">Upload and review documents.</p>
           </div>
           <Link to="/document-analysis" className="mt-4 text-blue-600 flex items-center gap-2 hover:underline">
-            <FaUpload /> Upload
+            <FaUpload /> Start
           </Link>
         </div>
 
@@ -117,51 +149,40 @@ const AdminDashboardContent = () => {
             <p className="text-gray-500 text-sm">Create posts with AI.</p>
           </div>
           <Link to="/post-generator" className="mt-4 text-blue-600 flex items-center gap-2 hover:underline">
-            <FaPen /> Generate
+            <FaPen /> Create
           </Link>
         </div>
       </div>
 
       {/* Registered Users */}
-      <div className="bg-white p-6 rounded-lg shadow mt-10">
-        <h3 className="text-xl font-bold mb-4">Registered Users</h3>
-
-        {/* Search Bar */}
-        <div className="mb-4">
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold">Registered Users</h3>
           <input
             type="text"
-            placeholder="Search by Name..."
+            placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 border rounded"
           />
         </div>
-
-        {/* User Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Full Name</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Email</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Role</th>
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="border-t">
-                  <td className="px-4 py-2">{user.fullName}</td>
-                  <td className="px-4 py-2">{user.email}</td>
-                  <td className="px-4 py-2 capitalize">{user.role}</td>
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.fullName}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap capitalize">{user.role}</td>
                 </tr>
               ))}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="text-center py-6 text-gray-500">
-                    No users found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

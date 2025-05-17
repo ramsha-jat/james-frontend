@@ -1,4 +1,4 @@
-import { FaRegChartBar, FaUpload, FaComments, FaPen, FaCog, FaSignOutAlt } from "react-icons/fa";
+import { FaRegChartBar, FaUpload, FaComments, FaPen, FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -36,9 +36,6 @@ const Sidebar = () => {
           </button>
 
           <div className="text-xs uppercase tracking-wider text-gray-400 mt-8 mb-2">Other</div>
-          <button className="flex items-center gap-3 text-white hover:text-blue-300" onClick={() => navigate("/settings")}>
-            <FaCog /> Settings
-          </button>
           <button className="flex items-center gap-3 text-white hover:text-blue-300" onClick={handleLogout}>
             <FaSignOutAlt /> Logout
           </button>
